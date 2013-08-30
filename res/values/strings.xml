@@ -29,5 +29,9 @@
 <resources>
     <string name="app_name">Music2SD</string>
     <string name="pref_path">Download Storage Location</string>
+    <string name="error">Error</string>
+    <string name="root_access">Root access is required to run this application.</string>
+    <string name="xposed_framework">Xposed Framework is required to run this application.</string>
+    <string name="download_xposed">Get Xposed</string>
     <string name="unable_search">Unable to search for SD Card.</string>
 </resources>

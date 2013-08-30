@@ -37,12 +37,21 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import eu.chainfire.libsuperuser.Shell;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.res.Configuration;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.Preference;
@@ -55,6 +64,7 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 	private Map<String, File> _externalLocations = new HashMap<String, File>();
 	private List<String> _mountpoints = new ArrayList<String>();
 	private Preference pref;
+	private Activity _activity;
 	
 	@SuppressWarnings("deprecation")
 	@Override
@@ -68,6 +78,9 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		pref.setSummary(sharedPref.getString("path", "Internal Storage"));
+		
+		_activity = this.getActivity();
+		(new RootHelper()).execute();
 	}
 	
 	@Override
@@ -91,7 +104,7 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		if (path != null) {
 			path = new File(path, "Android/data/com.google.android.music");
 			if (!path.exists()) {
-				path.mkdirs();
+				(new RootHelper()).execute(path.getAbsolutePath());
 			}
 			
 			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
@@ -109,6 +122,23 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 			
 			pref.setSummary("Internal Storage");
 		}
+	}
+	
+	@Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+	}
+	
+	private boolean isPackageExists(String targetPackage) {
+		PackageManager pm = this.getActivity().getPackageManager();
+		
+		try {
+			PackageInfo info = pm.getPackageInfo(targetPackage,PackageManager.GET_META_DATA);
+		} catch (NameNotFoundException e) {
+			return false;
+		}
+		
+		return true;
 	}
 	
 	private void buildExternalLocations() {
@@ -138,7 +168,7 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 					while (it.hasNext()) {
 						File ext_storage = new File(it.next());
 
-						if (ext_storage.exists()) {
+						if (ext_storage.exists() && !_externalLocations.containsValue(ext_storage)) {
 							_externalLocations.put("External Storage " + index, ext_storage);
 							_mountpoints.add("External Storage " + index);
 							
@@ -195,5 +225,74 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 	    }
 	    
 	    return sdcardPath;
+	}
+	
+	private void showDialog(Integer result) {
+		if (result == 1) {
+			AlertDialog.Builder builder = new AlertDialog.Builder(_activity);
+			builder.setTitle(R.string.error);
+			builder.setMessage(R.string.root_access);
+			builder.setCancelable(false);
+			builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface arg0, int arg1) {
+					getActivity().finish();
+				}
+			});
+			builder.show();
+		}
+		else if (result == 2) {
+			AlertDialog.Builder builder = new AlertDialog.Builder(_activity);
+			builder.setTitle(R.string.error);
+			builder.setMessage(R.string.xposed_framework);
+			builder.setCancelable(false);
+			builder.setPositiveButton(R.string.download_xposed, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface arg0, int arg1) {
+					Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://forum.xda-developers.com/showthread.php?t=1574401"));
+					startActivity(browserIntent);
+				}
+			});
+			builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface arg0, int arg1) {
+					getActivity().finish();
+				}
+			});
+			builder.show();
+		}
+	}
+	
+	private class RootHelper extends AsyncTask<String, Void, Integer> {
+		@Override
+		protected Integer doInBackground(String... params) {
+			int count = params.length;
+			
+			// Copy folders.
+			if (count == 2) {
+				Shell.SU.run("cp -r " + params[0] + " " + params[1]);
+			}
+			// Create Directories
+			else if (count == 1) {
+				Shell.SU.run("mkdir -p " + params[0]);
+			}
+			// Check for Root
+			else {
+				if (!Shell.SU.available()) {
+					return 1;
+				}
+				else {
+					if (!isPackageExists("de.robv.android.xposed.installer")) {
+						return 2;
+					}
+				}
+			}
+
+			return 0;
+		}
+		
+		protected void onPostExecute(Integer result) {
+			showDialog(result);
+		}
 	}
 }
