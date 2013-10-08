@@ -30,4 +30,24 @@
     <Preference
         android:key="path"
 		android:title="@string/pref_path" />
+    <PreferenceCategory 
+        android:title="@string/pref_links">
+	    <Preference
+	        android:key="music2sd"
+	        android:title="@string/pref_music2sd" />
+	    <Preference
+	        android:key="xposed"
+	        android:title="@string/pref_xposed" />
+    </PreferenceCategory>
+    <PreferenceCategory 
+        android:title="@string/pref_help">
+	    <Preference
+	        android:key="sdcard"
+	        android:title="@string/pref_sdcard"
+	        android:summary="@string/pref_desc_sdcard" />
+	    <Preference
+	        android:key="support"
+	        android:title="@string/pref_support"
+	        android:summary="@string/pref_desc_support" />
+    </PreferenceCategory>
 </PreferenceScreen>

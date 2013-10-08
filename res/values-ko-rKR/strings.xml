@@ -28,27 +28,27 @@
 
 <resources>
     <string name="app_name">Music2SD</string>
-    
-    <string name="pref_path">Download Storage Location</string>
 
-    <string name="pref_links">Useful Links</string>
-    <string name="pref_music2sd">Music2SD XDA Thread</string>
-    <string name="pref_xposed">Xposed Framework XDA Thread</string>
+    <string name="pref_path">다운로드 저장 위치</string>
+
+    <string name="pref_links">유용한 링크</string>
+    <string name="pref_music2sd">Music2SD XDA 스레드</string>
+    <string name="pref_xposed">Xposed Framework XDA 스레드</string>
     
-    <string name="pref_help">Getting Help</string>
-    <string name="pref_sdcard">SD Card Support</string>
-    <string name="pref_desc_sdcard">Storage or Free Space not showing up? Send me your information.</string>
-    <string name="pref_support">Support</string>
-    <string name="pref_desc_support">For any other issues regarding Music2SD.</string>
+    <string name="pref_help">도움받기</string>
+    <string name="pref_sdcard">외부 저장 지원</string>
+    <string name="pref_desc_sdcard">저장 공간 또는 사용가능한 공간이 보이지 않나요? 제게 귀하의 정보를 보내주세요.</string>
+    <string name="pref_support">지원</string>
+    <string name="pref_desc_support">Music2SD 관련 다른 문제가 있을 경우.</string>
     
-    <string name="internal">Internal Storage</string>
-    <string name="device">Device Storage</string>
-    <string name="external">External Storage</string>
-    <string name="unknown">Unknown Storage</string>
+    <string name="internal">내부 저장</string>
+    <string name="device">장치 저장</string>
+    <string name="external">외부 저장</string>
+    <string name="unknown">알 수 없는 저장 공간</string>
     
-    <string name="error">Error</string>
-    <string name="root_access">Root access is required to run this application.</string>
-    <string name="xposed_framework">Xposed Framework is required to run this application.</string>
-    <string name="download_xposed">Get Xposed</string>
-    <string name="unable_search">Unable to search for SD Card.</string>
+    <string name="error">오류</string>
+    <string name="root_access">본 애플리케이션을 실행하려면 루트 접근이 필요합니다.</string>
+    <string name="xposed_framework">본 애플리케이션을 실행하려면 Xposed Framework가 필요합니다.</string>
+    <string name="download_xposed">Xposed 받기</string>
+    <string name="unable_search">외부 저장 장치를 검색할 수 없습니다.</string>
 </resources>

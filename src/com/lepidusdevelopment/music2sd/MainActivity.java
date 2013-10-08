@@ -26,7 +26,6 @@ package com.lepidusdevelopment.music2sd;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 import android.app.Activity;
 import android.app.FragmentManager;
 import android.content.pm.ActivityInfo;
@@ -39,8 +38,8 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		setTitle(R.string.app_name);
 		
-		if (getResources().getBoolean(R.bool.isTablet)) {
-			this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+		if (!getResources().getBoolean(R.bool.isTablet)) {
+			this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 		}
 		
         FragmentManager fragmentManager = getFragmentManager();

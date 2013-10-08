@@ -26,45 +26,45 @@ package com.lepidusdevelopment.music2sd;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
 import eu.chainfire.libsuperuser.Shell;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-public class SettingsFragment extends PreferenceFragment implements OnPreferenceClickListener, OnClickListener {
+public class SettingsFragment extends PreferenceFragment implements OnPreferenceClickListener, MountManagerListener, OnItemClickListener {
 	private Map<String, File> _externalLocations = new HashMap<String, File>();
 	private List<String> _mountpoints = new ArrayList<String>();
 	private Preference pref;
-	private Activity _activity;
+	private AlertDialog _currentDialog = null;
 	
 	@SuppressWarnings("deprecation")
 	@Override
@@ -75,31 +75,61 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		
 		pref = ((Preference)findPreference("path"));
 		pref.setOnPreferenceClickListener(this);
-		
+				
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		pref.setSummary(sharedPref.getString("path", "Internal Storage"));
 		
-		_activity = this.getActivity();
+		((Preference)findPreference("music2sd")).setOnPreferenceClickListener(this);
+		((Preference)findPreference("xposed")).setOnPreferenceClickListener(this);
+		((Preference)findPreference("sdcard")).setOnPreferenceClickListener(this);
+		((Preference)findPreference("support")).setOnPreferenceClickListener(this);
+		
 		(new RootHelper()).execute();
 	}
 	
+	// - OnPreferenceClickListener Methods
 	@Override
     public boolean onPreferenceClick(Preference arg0) {
 		if (arg0.getKey().equalsIgnoreCase("path")) {
-			buildExternalLocations();
-									
-			AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-			builder.setTitle(R.string.pref_path);
-			builder.setItems(_mountpoints.toArray(new CharSequence[_mountpoints.size()]), this);
-			builder.show();
+			_externalLocations.clear();
+			_mountpoints.clear();
+			
+			MountManager mm = new MountManager(this.getActivity().getBaseContext());
+			mm.setFoundMountPointListener(this);
+			mm.getMountPoints();
+		}
+		else if (arg0.getKey().equalsIgnoreCase("music2sd")) {
+			Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://forum.xda-developers.com/showthread.php?t=2414467"));
+			startActivity(browserIntent);
+		}
+		else if (arg0.getKey().equalsIgnoreCase("xposed")) {
+			Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://forum.xda-developers.com/showthread.php?t=1574401"));
+			startActivity(browserIntent);
+		}
+		else if (arg0.getKey().equalsIgnoreCase("sdcard")) {
+			MountManager mm = new MountManager(this.getActivity().getBaseContext());
+			mm.setFoundMountPointListener(this);
+			mm.getDebugInfo();
+		}
+		else if (arg0.getKey().equalsIgnoreCase("support")) {
+			Intent i = new Intent(Intent.ACTION_SEND);
+			i.setType("message/rfc822");
+			i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"steven@lepidusdevelopment.com"});
+			i.putExtra(Intent.EXTRA_SUBJECT, "[MUSIC2SD] Support");
+			try {
+			    startActivity(Intent.createChooser(i, "Send mail..."));
+			} catch (android.content.ActivityNotFoundException ex) {
+			    Toast.makeText(getActivity(), "There are no email clients installed.", Toast.LENGTH_SHORT).show();
+			}
 		}
 		
 		return true;
 	}
-
+	
+	// - OnItemClickListener Methods
 	@Override
-	public void onClick(DialogInterface arg0, int arg1) {
-		File path = _externalLocations.get(_mountpoints.get(arg1));
+	public void onItemClick(AdapterView<?> adapter, View view, int pos, long id) {
+		File path = _externalLocations.get(_mountpoints.get(pos));
 		
 		if (path != null) {
 			path = new File(path, "Android/data/com.google.android.music");
@@ -122,147 +152,83 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 			
 			pref.setSummary("Internal Storage");
 		}
+		
+		if (_currentDialog != null) {
+			_currentDialog.dismiss();
+		}
+	}
+	
+	// - MountManagerListener Methods
+	@Override
+	public void hasFoundMountPoints(List<Mount> mounts) {
+		for (int i = 1; i <= 4; i++) {
+			Iterator<Mount> mountIterator = mounts.iterator();
+			while (mountIterator.hasNext()) {
+				Mount mount = mountIterator.next();
+				if (mount.priority == i) {
+					_externalLocations.put(mount.name + ":" + mount.mount + ":" + mount.freeSpace + ":" + mount.totalSpace, mount.file);
+					_mountpoints.add(mount.name + ":" + mount.mount + ":" + mount.freeSpace + ":" + mount.totalSpace);
+				}
+			}
+		}
+		
+		ListView mountList = new ListView(this.getActivity().getBaseContext());
+		ListViewAdapter adapter = new ListViewAdapter(this.getActivity().getBaseContext(), R.layout.list_view, _mountpoints.toArray(new String[_mountpoints.size()]));
+		mountList.setAdapter(adapter);
+		mountList.setOnItemClickListener(this);
+		
+		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+		builder.setTitle(R.string.pref_path);
+		builder.setView(mountList);
+		_currentDialog = builder.show();
 	}
 	
 	@Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
+	public void hasFoundMountPointsDebugInfo(String external, String secondary, List<Mount> mounts) {
+		StringBuilder body = new StringBuilder();
+		body.append("OS Version:\r\n");
+		body.append("\t" + System.getProperty("os.version") + "\r\n\r\n");
+		body.append("API Level:\r\n");
+		body.append("\t" + Build.VERSION.SDK_INT + "\r\n\r\n");
+		body.append("Device:\r\n");
+		body.append("\t" + Build.DEVICE + "\r\n\r\n");
+		body.append("Model:\r\n");
+		body.append("\t" + Build.MODEL + "\r\n\r\n");
+		body.append("Product:\r\n");
+		body.append("\t" + Build.PRODUCT + "\r\n\r\n");
+		body.append("EXTERNAL_STORAGE Environment Variable:" + "\r\n");
+		body.append("\t" + external + "\r\n\r\n");
+		body.append("SECONDARY_STORAGE Environment Variable:" + "\r\n");
+		body.append("\t" + secondary + "\r\n\r\n");
+		body.append("MOUNT Command:" + "\r\n");
+		
+		Iterator<Mount> mountIterator = mounts.iterator();
+		while (mountIterator.hasNext()) {
+			Mount mount = mountIterator.next();
+			body.append("\t" + mount.mountLine + "\r\n");
+		}
+		
+		Intent i = new Intent(Intent.ACTION_SEND);
+		i.setType("message/rfc822");
+		i.putExtra(Intent.EXTRA_EMAIL  , new String[]{"steven@lepidusdevelopment.com"});
+		i.putExtra(Intent.EXTRA_SUBJECT, "[MUSIC2SD] Support");
+		i.putExtra(Intent.EXTRA_TEXT, body.toString());
+		try {
+		    startActivity(Intent.createChooser(i, "Send mail..."));
+		} catch (android.content.ActivityNotFoundException ex) {
+		    Toast.makeText(getActivity(), "There are no email clients installed.", Toast.LENGTH_SHORT).show();
+		}
 	}
 	
+	// - Private Methods
 	private boolean isPackageExists(String targetPackage) {
 		PackageManager pm = this.getActivity().getPackageManager();
-		
-		try {
-			PackageInfo info = pm.getPackageInfo(targetPackage,PackageManager.GET_META_DATA);
-		} catch (NameNotFoundException e) {
-			return false;
-		}
-		
+		try{pm.getPackageInfo(targetPackage,PackageManager.GET_META_DATA);}
+		catch (NameNotFoundException e){return false;}
 		return true;
 	}
-	
-	private void buildExternalLocations() {
-		_externalLocations.clear();
-		_mountpoints.clear();
-		
-		if ("mounted".equals(Environment.getExternalStorageState())) {
-			if (Environment.isExternalStorageRemovable()) {
-				_externalLocations.put("Internal Storage", null);
-				_externalLocations.put("Device Storage", Environment.getExternalStorageDirectory());
-				
-				_mountpoints.add("Internal Storage");
-				_mountpoints.add("Device Storage");
-			}
-			else {
-				List<String> externalstorage_path = getPathToExternalStorage();
-				
-				if (externalstorage_path.size() != 0) {
-					_externalLocations.put("Internal Storage", null);
-					_externalLocations.put("Device Storage", Environment.getExternalStorageDirectory());
 
-					_mountpoints.add("Internal Storage");
-					_mountpoints.add("Device Storage");
-					
-					ListIterator<String> it = externalstorage_path.listIterator();
-					int index = 1;
-					while (it.hasNext()) {
-						File ext_storage = new File(it.next());
-
-						if (ext_storage.exists() && !_externalLocations.containsValue(ext_storage)) {
-							_externalLocations.put("External Storage " + index, ext_storage);
-							_mountpoints.add("External Storage " + index);
-							
-							index++;
-						}
-					}
-				}
-				else {
-					_externalLocations.put("Internal Storage", null);
-					_externalLocations.put("Device Storage", Environment.getExternalStorageDirectory());
-					
-					_mountpoints.add("Internal Storage");
-					_mountpoints.add("Device Storage");
-				}
-			}
-		}
-		else {
-			_externalLocations.put("Internal Storage", null);
-			
-			_mountpoints.add("Internal Storage");
-		}
-	}
-	
-	private List<String> getPathToExternalStorage() {
-		List<String> sdcardPath = new ArrayList<String>();
-	    Runtime runtime = Runtime.getRuntime();
-	    Process proc = null;
-	    try {
-	        proc = runtime.exec("mount");
-	    } catch (IOException e1) {
-	        e1.printStackTrace();
-	    }
-	    
-	    if (proc != null) {
-		    InputStream is = proc.getInputStream();
-		    InputStreamReader isr = new InputStreamReader(is);
-		    String line;
-		    BufferedReader br = new BufferedReader(isr);
-		    try {
-		        while ((line = br.readLine()) != null) {
-		            if (line.contains("fat") && line.contains("rw")) {
-		                String columns[] = line.split(" ");
-		                if (columns != null && columns.length > 1) {
-		                	sdcardPath.add(columns[1]);
-		                }
-		            }
-		        }
-		    } catch (IOException e) {
-		        e.printStackTrace();
-		    }
-	    }
-	    else {
-	    	Toast.makeText(getActivity(), R.string.unable_search, Toast.LENGTH_SHORT).show();
-	    }
-	    
-	    return sdcardPath;
-	}
-	
-	private void showDialog(Integer result) {
-		if (result == 1) {
-			AlertDialog.Builder builder = new AlertDialog.Builder(_activity);
-			builder.setTitle(R.string.error);
-			builder.setMessage(R.string.root_access);
-			builder.setCancelable(false);
-			builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface arg0, int arg1) {
-					getActivity().finish();
-				}
-			});
-			builder.show();
-		}
-		else if (result == 2) {
-			AlertDialog.Builder builder = new AlertDialog.Builder(_activity);
-			builder.setTitle(R.string.error);
-			builder.setMessage(R.string.xposed_framework);
-			builder.setCancelable(false);
-			builder.setPositiveButton(R.string.download_xposed, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface arg0, int arg1) {
-					Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://forum.xda-developers.com/showthread.php?t=1574401"));
-					startActivity(browserIntent);
-				}
-			});
-			builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface arg0, int arg1) {
-					getActivity().finish();
-				}
-			});
-			builder.show();
-		}
-	}
-	
+	// - Threaded Asynchronous Task to handle SuperUser tasks.
 	private class RootHelper extends AsyncTask<String, Void, Integer> {
 		@Override
 		protected Integer doInBackground(String... params) {
@@ -292,7 +258,75 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		}
 		
 		protected void onPostExecute(Integer result) {
-			showDialog(result);
+			if (result == 1) {
+				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+				builder.setTitle(R.string.error);
+				builder.setMessage(R.string.root_access);
+				builder.setCancelable(false);
+				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface arg0, int arg1) {
+						getActivity().finish();
+					}
+				});
+				builder.show();
+			}
+			else if (result == 2) {
+				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+				builder.setTitle(R.string.error);
+				builder.setMessage(R.string.xposed_framework);
+				builder.setCancelable(false);
+				builder.setPositiveButton(R.string.download_xposed, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface arg0, int arg1) {
+						Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://forum.xda-developers.com/showthread.php?t=1574401"));
+						startActivity(browserIntent);
+					}
+				});
+				builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface arg0, int arg1) {
+						getActivity().finish();
+					}
+				});
+				builder.show();
+			}
+		}
+	}
+
+	private class ListViewAdapter extends ArrayAdapter<String> {
+		private final String[] _items;
+		
+		public ListViewAdapter(Context context, int textViewResourceId, String[] items) {
+			super(context, textViewResourceId, items);
+			_items = items;
+		}
+		
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			View v = convertView;
+			
+			if (v == null) {
+				LayoutInflater vi = LayoutInflater.from(getContext());
+				v = vi.inflate(R.layout.list_view, null);
+			}
+			
+			String[] info = _items[position].split(":");
+			
+			TextView nameTextView = (TextView) v.findViewById(R.id.list_name);
+			TextView pathTextView = (TextView) v.findViewById(R.id.list_path);
+			TextView diskSpaceTextView = (TextView) v.findViewById(R.id.list_diskspace);
+			
+			nameTextView.setText(info[0]);
+			pathTextView.setText(info[1]);
+			if (info[2].equalsIgnoreCase("unk") || info[3].equalsIgnoreCase("unk")) {
+				diskSpaceTextView.setText("");
+			}
+			else {
+				diskSpaceTextView.setText(info[2] + "/" + info[3]);
+			}
+			
+			return v;
 		}
 	}
 }

@@ -28,27 +28,27 @@
 
 <resources>
     <string name="app_name">Music2SD</string>
-    
-    <string name="pref_path">Download Storage Location</string>
 
-    <string name="pref_links">Useful Links</string>
-    <string name="pref_music2sd">Music2SD XDA Thread</string>
-    <string name="pref_xposed">Xposed Framework XDA Thread</string>
+    <string name="pref_path">Downloadspeicherort</string>
+
+    <string name="pref_links">Nützliche Links</string>
+    <string name="pref_music2sd">Music2SD XDA-Faden</string>
+    <string name="pref_xposed">Xposed Framework XDA-Faden</string>
     
-    <string name="pref_help">Getting Help</string>
-    <string name="pref_sdcard">SD Card Support</string>
-    <string name="pref_desc_sdcard">Storage or Free Space not showing up? Send me your information.</string>
+    <string name="pref_help">So bekommen Sie Hilfe</string>
+    <string name="pref_sdcard">Unterstützung von externen Speichern</string>
+    <string name="pref_desc_sdcard">Speicher oder freier Speicherplatz wird nicht angezeigt? Senden Sie mir Ihre Informationen.</string>
     <string name="pref_support">Support</string>
-    <string name="pref_desc_support">For any other issues regarding Music2SD.</string>
+    <string name="pref_desc_support">Für alle anderen Fragen betreffend Music2SD.</string>
     
-    <string name="internal">Internal Storage</string>
-    <string name="device">Device Storage</string>
-    <string name="external">External Storage</string>
-    <string name="unknown">Unknown Storage</string>
+    <string name="internal">Interner Speicher</string>
+    <string name="device">Speichern auf Speichergerät</string>
+    <string name="external">Externer Speicher</string>
+    <string name="unknown">Unbekannter Speicher</string>
     
-    <string name="error">Error</string>
-    <string name="root_access">Root access is required to run this application.</string>
-    <string name="xposed_framework">Xposed Framework is required to run this application.</string>
-    <string name="download_xposed">Get Xposed</string>
-    <string name="unable_search">Unable to search for SD Card.</string>
+    <string name="error">Fehler</string>
+    <string name="root_access">Zum Ausführen dieser Anwendung benötigen Sie Administratorrechte.</string>
+    <string name="xposed_framework">Zum Ausführen dieser Anwendung benötigen Sie Xposed Framework.</string>
+    <string name="download_xposed">Xposed kaufen</string>
+    <string name="unable_search">Suche nach externem Speicher nicht möglich.</string>
 </resources>
