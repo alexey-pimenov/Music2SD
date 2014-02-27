@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!-- 
-	Copyright (c) 2013, Lepidus Development LLC
+	Copyright (c) 2014, Lepidus Development LLC
 	All rights reserved.
 	
 	Redistribution and use in source and binary forms, with or without modification,
@@ -50,8 +50,8 @@
 	    android:layout_alignParentBottom="true"
 	    android:layout_centerHorizontal="true"
 	    ads:adSize="BANNER"
-	    ads:adUnitId=""
+	    ads:adUnitId="a152235667992af"
 	    ads:loadAdOnCreate="true"
-	    ads:testDevices="TEST_EMULATOR" />
+	    ads:testDevices="TEST_EMULATOR, 2744370FE5BBCE262A2546109BDB188D" />
 	
 </RelativeLayout>

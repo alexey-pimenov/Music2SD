@@ -1,7 +1,7 @@
 package com.lepidusdevelopment.music2sd;
 
 /**
- * Copyright (c) 2013, Lepidus Development LLC
+ * Copyright (c) 2014, Lepidus Development LLC
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
