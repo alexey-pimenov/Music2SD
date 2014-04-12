@@ -27,9 +27,9 @@ package com.lepidusdevelopment.music2sd;
  */
 
 import java.io.File;
+import java.util.UUID;
 
 import android.content.Context;
-import android.os.Environment;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
@@ -51,83 +51,92 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 	
 	@Override
 	public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-		if (lpparam.packageName.equals("com.google.android.music")) {
+		if (lpparam.packageName.equals("com.google.android.music") && android.os.Build.VERSION.SDK_INT < 19) {
 			ClassLoader classLoader = lpparam.classLoader;
 			
+		    // Move all of our directories to the new location.
 			XC_MethodReplacement CacheUtils_getCacheDirectory = new XC_MethodReplacement() {
 				@Override
 				protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
 					Context paramContext = ((Context) param.args[0]);
 					String paramString = ((String) param.args[1]);
-
-					File path = getSDCardPath(paramContext, paramString);
-					XposedBridge.log("MUSIC2SD: " + path.getAbsolutePath());
-					
-					return path;
+										
+					return getSDCardPath(paramContext, paramString);
 				}
 		    };
-		    			
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocationManager", classLoader, "deviceHasExternalStorage", new XC_MethodHook() {
-				@Override
-				protected void beforeHookedMethod(MethodHookParam param) throws Throwable  {
-					param.setResult(true);
-				}
-		    });
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getExternalCacheDirectory", Context.class, String.class, CacheUtils_getCacheDirectory);		
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getInternalCacheDirectory", Context.class, String.class, CacheUtils_getCacheDirectory);		
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getInternalCacheDirectory", Context.class, String.class, CacheUtils_getCacheDirectory);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getInternalCacheDirectory_Old", Context.class, String.class, CacheUtils_getCacheDirectory);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getExternalCacheDirectory", Context.class, String.class, CacheUtils_getCacheDirectory);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getExternalCacheDirectory_Old", Context.class, String.class, CacheUtils_getCacheDirectory);
 		    
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getSelectedVolumeMusicCacheDirectory", Context.class, new XC_MethodHook() {
+		    
+		    // Weird methods that may or may not be using the above methods. Best to play it safe and overwrite it.
+		    XC_MethodReplacement CacheUtils_musicCacheDirectory = new XC_MethodReplacement() {
 				@Override
-				protected void beforeHookedMethod(MethodHookParam param) throws Throwable  {
+				protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
 					Context paramContext = ((Context) param.args[0]);
-					String paramString = "music";
-
-					File path = getSDCardPath(paramContext, paramString);
-					param.setResult(path);
+					return getSDCardPath(paramContext, "music");
 				}
-		    });		
-
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocation", classLoader, "getCacheFile", String.class, new XC_MethodHook() {
+		    };
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getMusicCacheDirectoryById", Context.class, UUID.class, CacheUtils_musicCacheDirectory);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getSelectedVolumeMusicCacheDirectory", Context.class, CacheUtils_musicCacheDirectory);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "resolveMusicPath", Context.class, String.class, int.class, UUID.class, CacheUtils_musicCacheDirectory);
+		    
+		    
+		    // Forces External Storage type.
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocationManager", classLoader, "deviceHasExternalStorage", XC_MethodReplacement.returnConstant(true));
+		    Class<?> storageTypeClass = XposedHelpers.findClass("com.google.android.music.download.cache.CacheUtils.StorageType", classLoader);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getSchemaValueForStorageType", storageTypeClass, XC_MethodReplacement.returnConstant(2));
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "isExternalStorageMounted",  XC_MethodReplacement.returnConstant(true));
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "isVolumeMounted", UUID.class, Context.class,  XC_MethodReplacement.returnConstant(true));
+		    		    
+		    
+		    // Modify any cache locations that may slip through.
+		    XC_MethodHook CacheLocation_getFile = new XC_MethodHook() {
 				@Override
-				protected void beforeHookedMethod(MethodHookParam param) throws Throwable  {
-					String pathString = prefs.getString("path", "");
-					String paramString = (String) param.args[0];
-					if (!pathString.equalsIgnoreCase("")) {
-						param.setResult(new File(pathString, paramString));
+				protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+					File oldPath = (File) param.getResult();
+					File newPath = null;
+					String oldPathString = oldPath.getAbsolutePath();
+					String newPathString = prefs.getString("path", "") + "/files";
+					
+					XposedBridge.log(oldPathString);
+					if (!newPathString.isEmpty()) {
+						newPath = new File(newPathString);
+						
+						if (newPath.exists() && oldPathString.indexOf(newPathString) == -1) {
+							int pos = oldPathString.indexOf("/Android/data/com.google.android.music/files") + 44;
+
+							if (pos != oldPathString.length()) {
+								String revisedPathString = newPathString + oldPathString.substring(pos);
+								newPath = new File(revisedPathString);
+								XposedBridge.log(revisedPathString);
+							}
+							
+							XposedBridge.log(newPath.getAbsolutePath());
+							param.setResult(newPath);
+							return;
+						}
 					}
+					
+					XposedBridge.log(oldPath.getAbsolutePath());
+					param.setResult(oldPath);
+					return;
 				}
-		    });		
-		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocation", classLoader, "getPath", new XC_MethodHook() {
-				@Override
-				protected void beforeHookedMethod(MethodHookParam param) throws Throwable  {
-					String pathString = prefs.getString("path", "");
-					if (!pathString.equalsIgnoreCase("")) {
-						param.setResult(new File(pathString));
-					}
-				}
-		    });		
+		    };
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocation", lpparam.classLoader, "getCacheFile", String.class, CacheLocation_getFile);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocation", lpparam.classLoader, "getPath", CacheLocation_getFile);
+		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheLocation", lpparam.classLoader, "hasMusicFiles", XC_MethodReplacement.returnConstant(true));	
 		}
-//		else if (lpparam.packageName.equals("com.google.android.gsf")) {
-//			ClassLoader classLoader = lpparam.classLoader;
-//			
-//			 XposedHelpers.findAndHookMethod("com.google.android.gsf.Gservices", classLoader, "getBoolean", ContentResolver.class, String.class, Boolean.class, new XC_MethodHook() {
-//				@Override
-//				protected void afterHookedMethod(MethodHookParam param) throws Throwable  {
-//					if (((String) param.args[1]).equalsIgnoreCase("music_enable_secondary_sdcards")) {
-//						param.setResult(true);
-//					}
-//				}
-//		    });	
-//		}
 	}
 	
 	private File getSDCardPath(Context paramContext, String paramString) {
 		File path = null;
 		String pathString = prefs.getString("path", "");
 		
-		// if path is empty then use Internal Storage.
+		// If path is empty then use Internal Storage.
 		if (!pathString.isEmpty()) {
-			path = new File(pathString);
+			path = new File(pathString, "files");
 			
 			if (path.exists()) {
 				if (paramString != null)
@@ -135,23 +144,11 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 				
 				return path;
 			}
-			// Something is wrong lets try Device Storage and if that doesn't work fallback to Internal Storage.
-			else {
-				if ("mounted".equals(Environment.getExternalStorageState())) {
-					path = paramContext.getExternalFilesDir(null);
-
-					if (path != null) {
-						if (paramString != null)
-							path = new File(path, paramString);
-
-						return path;
-					}
-				}
-			}
 		}
 
 		path = paramContext.getFilesDir();
 		
+		// If for some reason that fails then panic!
 		if (path != null) {
 			if (paramString != null)
 				path = new File(path, paramString);

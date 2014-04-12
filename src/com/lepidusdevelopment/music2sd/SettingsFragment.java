@@ -84,7 +84,22 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		((Preference)findPreference("sdcard")).setOnPreferenceClickListener(this);
 		((Preference)findPreference("support")).setOnPreferenceClickListener(this);
 		
-		(new RootHelper()).execute();
+		if (android.os.Build.VERSION.SDK_INT >= 19) {
+			AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+			builder.setTitle(R.string.error);
+			builder.setMessage(R.string.kitkat_above);
+			builder.setCancelable(false);
+			builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface arg0, int arg1) {
+					getActivity().finish();
+				}
+			});
+			builder.show();
+		}
+		else {
+			(new RootHelper()).execute();
+		}
 	}
 	
 	// - OnPreferenceClickListener Methods
@@ -135,6 +150,11 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 			path = new File(path, "Android/data/com.google.android.music");
 			if (!path.exists()) {
 				(new RootHelper()).execute(path.getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "files")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "files/artwork")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "files/artwork2")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "files/artwork2/folder")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "files/music")).getAbsolutePath());
 			}
 			
 			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
