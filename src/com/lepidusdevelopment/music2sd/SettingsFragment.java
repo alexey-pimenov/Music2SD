@@ -147,14 +147,13 @@ public class SettingsFragment extends PreferenceFragment implements OnPreference
 		File path = _externalLocations.get(_mountpoints.get(pos));
 		
 		if (path != null) {
-			path = new File(path, "Android/data/com.google.android.music");
+			path = new File(path, "Android/data/com.google.android.music/files");
 			if (!path.exists()) {
 				(new RootHelper()).execute(path.getAbsolutePath());
-				(new RootHelper()).execute((new File(path, "files")).getAbsolutePath());
-				(new RootHelper()).execute((new File(path, "files/artwork")).getAbsolutePath());
-				(new RootHelper()).execute((new File(path, "files/artwork2")).getAbsolutePath());
-				(new RootHelper()).execute((new File(path, "files/artwork2/folder")).getAbsolutePath());
-				(new RootHelper()).execute((new File(path, "files/music")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "artwork")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "artwork2")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "artwork2/folder")).getAbsolutePath());
+				(new RootHelper()).execute((new File(path, "music")).getAbsolutePath());
 			}
 			
 			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());

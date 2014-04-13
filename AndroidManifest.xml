@@ -28,8 +28,8 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.lepidusdevelopment.music2sd"
-    android:versionCode="13"
-    android:versionName="1.8">
+    android:versionCode="14"
+    android:versionName="1.9">
 
     <uses-sdk android:minSdkVersion="15" android:targetSdkVersion="19" />
     <uses-permission android:name="android.permission.INTERNET"/>

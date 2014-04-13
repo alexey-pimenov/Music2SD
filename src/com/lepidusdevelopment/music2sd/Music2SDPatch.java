@@ -60,8 +60,11 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 				protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
 					Context paramContext = ((Context) param.args[0]);
 					String paramString = ((String) param.args[1]);
-										
 					return getSDCardPath(paramContext, paramString);
+//					File debugFile = getSDCardPath(paramContext, paramString);
+//					XposedBridge.log("CacheUtils_getCacheDirectory: " + debugFile.getAbsolutePath());
+//					
+//					return debugFile;
 				}
 		    };
 		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getInternalCacheDirectory", Context.class, String.class, CacheUtils_getCacheDirectory);
@@ -76,6 +79,10 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 				protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
 					Context paramContext = ((Context) param.args[0]);
 					return getSDCardPath(paramContext, "music");
+//					File debugFile = getSDCardPath(paramContext, "music");
+//					XposedBridge.log("CacheUtils_musicCacheDirectory: " + debugFile.getAbsolutePath());
+//					
+//					return debugFile;
 				}
 		    };
 		    XposedHelpers.findAndHookMethod("com.google.android.music.download.cache.CacheUtils", classLoader, "getMusicCacheDirectoryById", Context.class, UUID.class, CacheUtils_musicCacheDirectory);
@@ -98,9 +105,8 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 					File oldPath = (File) param.getResult();
 					File newPath = null;
 					String oldPathString = oldPath.getAbsolutePath();
-					String newPathString = prefs.getString("path", "") + "/files";
+					String newPathString = prefs.getString("path", "");
 					
-					XposedBridge.log(oldPathString);
 					if (!newPathString.isEmpty()) {
 						newPath = new File(newPathString);
 						
@@ -110,16 +116,15 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 							if (pos != oldPathString.length()) {
 								String revisedPathString = newPathString + oldPathString.substring(pos);
 								newPath = new File(revisedPathString);
-								XposedBridge.log(revisedPathString);
 							}
 							
-							XposedBridge.log(newPath.getAbsolutePath());
+//							XposedBridge.log("CacheLocation_getFile: newPath - " + newPath.getAbsolutePath());
 							param.setResult(newPath);
 							return;
 						}
 					}
 					
-					XposedBridge.log(oldPath.getAbsolutePath());
+//					XposedBridge.log("CacheLocation_getFile: oldPath - " + oldPath.getAbsolutePath());
 					param.setResult(oldPath);
 					return;
 				}
@@ -136,7 +141,7 @@ public class Music2SDPatch implements IXposedHookZygoteInit, IXposedHookLoadPack
 		
 		// If path is empty then use Internal Storage.
 		if (!pathString.isEmpty()) {
-			path = new File(pathString, "files");
+			path = new File(pathString);
 			
 			if (path.exists()) {
 				if (paramString != null)
